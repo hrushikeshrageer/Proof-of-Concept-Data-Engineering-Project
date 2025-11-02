@@ -1,17 +1,24 @@
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 
-class0_idx = np.where(y == 0)[0]
-class1_idx = np.where(y == 1)[0]
+# Example: X is your features (DataFrame or array), y is your labels.
+df = pd.DataFrame(X)
+df['target'] = y
 
-np.random.seed(42)
-train_idx = np.concatenate([
-    np.random.choice(class0_idx, 50, replace=False),
-    np.random.choice(class1_idx, 50, replace=False)
-])
+# Number of samples per class you want (e.g., 50 for each class)
+n_samples = 50
+train_dfs = []
+for label in df['target'].unique():
+    train_dfs.append(df[df['target'] == label].sample(n=n_samples, random_state=42))
 
-X_train = X[train_idx]
-y_train = y[train_idx]
+train_df = pd.concat(train_dfs)
+X_train = train_df.drop('target', axis=1)
+y_train = train_df['target']
 
-test_idx = np.setdiff1d(np.arange(len(y)), train_idx)
-X_test = X[test_idx]
-y_test = y[test_idx]
+# To create a test set, remove these samples from the original:
+remaining = df.drop(train_df.index)
+X_test = remaining.drop('target', axis=1)
+y_test = remaining['target']
+
+# Now X_train and y_train have exactly equal class distributions
