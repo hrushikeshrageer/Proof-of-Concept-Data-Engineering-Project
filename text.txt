@@ -359,11 +359,28 @@ def main():
                     time.sleep(0.1)
                 
                 response = response.replace("'", "")
-                chunk_2=get_similar_chunks_search_service(response,find_file=True)
-                json_data = json.loads(chunk_2)
+                
+                query = """
+                        WITH summary_embedding AS (
+                            SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+                                'snowflake-arctic-embed-l-v2.0',
+                                ?
+                            ) AS summary_vec
+                        )
+                        SELECT 
+                            c.relative_path as relative_path,
+                            c.filecontent,
+                            VECTOR_COSINE_SIMILARITY(c.chunk_embedding, s.summary_vec) AS similarity_score
+                        FROM your_chunks_table c
+                        CROSS JOIN summary_embedding s
+                        ORDER BY similarity_score DESC
+                        LIMIT 1
+                        """
 
-                relative_paths_single = set(item['relative_path'] for item in json_data['results'])
-                # relative_paths = [''.join(list(relative_paths)[0])]
+                # Execute query with response as parameter
+                result_df = session.sql(query, params=[response]).to_pandas()
+                
+                relative_paths_single = set(result_df['relative_path'])
                 
                 if relative_paths_single != "None":
                     # Start HTML for a styled document section
@@ -486,5 +503,3 @@ def main():
        
 if __name__ == "__main__":
     main()
-
-
