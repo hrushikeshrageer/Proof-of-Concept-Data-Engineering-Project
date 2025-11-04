@@ -1,40 +1,21 @@
-EDGE Values Self-Review
-Engaged
+query = """
+WITH summary_embedding AS (
+    SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+        'snowflake-arctic-embed-l-v2.0',
+        ?
+    ) AS summary_vec
+)
+SELECT 
+    c.chunk_id,
+    c.chunk_text,
+    c.filename,
+    c.page_number,
+    VECTOR_COSINE_SIMILARITY(c.chunk_embedding, s.summary_vec) AS similarity_score
+FROM your_chunks_table c
+CROSS JOIN summary_embedding s
+ORDER BY similarity_score DESC
+LIMIT 1
+"""
 
-Throughout this review period, I stayed fully engaged with First Tech’s mission by collaborating across teams, encouraging open feedback, and driving solutions that directly improved efficiency for business partners.
-
-In the Payment Defender Strategy and Mortgage Operations Analysis, I worked closely with stakeholders like Jenica, Brent, and Anna to understand business pain points and translate them into actionable analytics.
-
-I actively sought feedback from Zack and Srini at every stage to refine my analysis and ensure alignment with business expectations.
-
-During the Gen AI Initiatives, I partnered with multiple departments (Mortgage, Marketing, Sales, and Data Practices) to co-create AI-driven solutions that empowered users and reduced manual effort.
-
-By maintaining consistent communication and accountability, I helped bridge business and data science teams, ensuring that every project delivered measurable value and built trust across departments.
-
-Dynamic
-
-I embraced change and innovation through continuous learning and experimentation with new technologies.
-
-As part of the Gen AI Initiatives, I led two pilots — the RAG-based Mortgage Chatbot and the Snowflake Intelligence Agent — which introduced Generative AI into business workflows for the first time at First Tech.
-
-I proactively learned Snowflake Cortex, Streamlit, and Cortex Analyst to build scalable AI applications from the ground up.
-
-When the Mortgage Operations project revealed data limitations, I adapted quickly by switching from predictive modeling to descriptive analytics, ensuring stakeholders still received actionable insights.
-
-I remained flexible, resilient, and solution-oriented, always seeking innovative ways to enhance business efficiency and member experience through data-driven automation and AI integration.
-
-Genuine
-
-I take pride in fostering a genuine, respectful, and collaborative work culture.
-
-I consistently recognized the contributions of my teammates — including Srinivas, Brent, and Anna — and ensured credit was shared across every project.
-
-I maintained transparent communication with Zack and Srini, openly discussing challenges, learnings, and progress.
-
-In projects like the Mortgage Chatbot pilot, I actively incorporated user feedback from Ashlee, Scott, and Tamera to refine usability and response accuracy, demonstrating empathy for end users’ needs.
-
-By listening carefully, responding with integrity, and valuing every team member’s perspective, I helped strengthen collaboration and inclusivity within the Data Science and Mortgage Operations teams.
-
-Summary
-
-Across all four projects, I demonstrated the EDGE values through collaboration, adaptability, empathy, and innovation. Whether it was analyzing payment risk, enabling self-service analytics, or developing Generative AI tools, I remained committed to First Tech’s purpose — helping members succeed through data-driven solutions and genuine teamwork.
+# Execute query with response as parameter
+result_df = session.sql(query, params=[response]).to_pandas()
