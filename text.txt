@@ -1,45 +1,40 @@
-Goal: Gen AI Initiatives
+EDGE Values Self-Review
+Engaged
 
-Projects: RAG-Based Chatbot for Mortgage Operations & Snowflake Intelligence Agent for Marketing Analytics
+Throughout this review period, I stayed fully engaged with First Tech’s mission by collaborating across teams, encouraging open feedback, and driving solutions that directly improved efficiency for business partners.
 
-Description:
-Led two key Generative AI initiatives under the enterprise innovation roadmap:
+In the Payment Defender Strategy and Mortgage Operations Analysis, I worked closely with stakeholders like Jenica, Brent, and Anna to understand business pain points and translate them into actionable analytics.
 
-Mortgage RAG Chatbot: Developed a Retrieval-Augmented Generation (RAG) chatbot using Snowflake Cortex and Streamlit to help the Mortgage Operations team instantly retrieve information from over 541 Confluence documents. The solution replaced manual document searches with an AI assistant that delivers accurate, cited answers within seconds.
+I actively sought feedback from Zack and Srini at every stage to refine my analysis and ensure alignment with business expectations.
 
-Snowflake Intelligence Agent: Built an AI Agent in Snowflake Cortex Analyst capable of interpreting natural language business questions on marketing campaign data and dynamically generating SQL queries and visualizations. The agent answered key descriptive questions such as “What are the total emails delivered for a specific campaign in Q3 2025?”
+During the Gen AI Initiatives, I partnered with multiple departments (Mortgage, Marketing, Sales, and Data Practices) to co-create AI-driven solutions that empowered users and reduced manual effort.
 
-Impact:
+By maintaining consistent communication and accountability, I helped bridge business and data science teams, ensuring that every project delivered measurable value and built trust across departments.
 
-Reduced information retrieval time for Mortgage Operations from minutes to under 10 seconds, improving staff productivity.
+Dynamic
 
-Increased answer relevance by 8% and context relevance by 12% across chatbot pilots (v1→v2).
+I embraced change and innovation through continuous learning and experimentation with new technologies.
 
-Enabled self-service analytics for the Marketing team, cutting turnaround time for data requests and improving insight accessibility.
+As part of the Gen AI Initiatives, I led two pilots — the RAG-based Mortgage Chatbot and the Snowflake Intelligence Agent — which introduced Generative AI into business workflows for the first time at First Tech.
 
-Established Snowflake AI observability metrics and a reusable AI agent framework for future business applications.
+I proactively learned Snowflake Cortex, Streamlit, and Cortex Analyst to build scalable AI applications from the ground up.
 
-Key Metrics Tracked:
+When the Mortgage Operations project revealed data limitations, I adapted quickly by switching from predictive modeling to descriptive analytics, ensuring stakeholders still received actionable insights.
 
-AI observability (Answer Relevance, Context Relevance, Groundedness)
+I remained flexible, resilient, and solution-oriented, always seeking innovative ways to enhance business efficiency and member experience through data-driven automation and AI integration.
 
-User testing scores (Accuracy, Readability, Traceability, Latency)
+Genuine
 
-Agent response latency and SQL interpretation accuracy (>90%)
+I take pride in fostering a genuine, respectful, and collaborative work culture.
 
-Collaboration:
+I consistently recognized the contributions of my teammates — including Srinivas, Brent, and Anna — and ensured credit was shared across every project.
 
-Worked with Tamera Jette for Confluence access, Shannon for documentation availability, and Ashlee & Scott from Sales and Underwriting for user testing.
+I maintained transparent communication with Zack and Srini, openly discussing challenges, learnings, and progress.
 
-Partnered with Leland (Sr. Director, Data Practices) for user evaluation reports and feedback tracking.
+In projects like the Mortgage Chatbot pilot, I actively incorporated user feedback from Ashlee, Scott, and Tamera to refine usability and response accuracy, demonstrating empathy for end users’ needs.
 
-Collaborated with Srinivas Rachakonda to access email campaign dashboards and Snowflake queries for agent testing.
+By listening carefully, responding with integrity, and valuing every team member’s perspective, I helped strengthen collaboration and inclusivity within the Data Science and Mortgage Operations teams.
 
-Coordinated with Marketing Analytics and Mortgage Operations teams to validate results and ensure alignment with business goals.
+Summary
 
-All findings and deliverables were reviewed and validated with Manager Zack and Assistant Manager Srini before stakeholder presentation.
-
-Tools and Methods:
-
-Snowflake Cortex, Streamlit, Confluence API, Dataiku, SQL, Cortex Analyst, AI Observability Framework
-
+Across all four projects, I demonstrated the EDGE values through collaboration, adaptability, empathy, and innovation. Whether it was analyzing payment risk, enabling self-service analytics, or developing Generative AI tools, I remained committed to First Tech’s purpose — helping members succeed through data-driven solutions and genuine teamwork.
