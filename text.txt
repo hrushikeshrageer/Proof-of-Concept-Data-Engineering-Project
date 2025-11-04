@@ -1,52 +1,49 @@
-Project: Payment Defender Strategy – Float/Reversal Evaluation
+Goal: Mortgage Operations
+
+Project: Mortgage Modification Analysis
 
 Description:
-Evaluated whether the new Payment Defender strategy reduces false float flags on legitimate credit-card transactions while maintaining strong detection of payment reversals. Back-tested 2024 card payments and reversals in Snowflake, reproduced both existing and new rule sets (rules shared by Velera), and built an evaluation pipeline in Dataiku to:
+Conducted an in-depth analysis of mortgage modification requests to identify behavioral patterns and assess the feasibility of predictive modeling for early detection of members seeking loan modifications. Using historical mortgage data from 140 accounts (231 modification requests), the analysis segmented borrowers by generation, credit tier, SEG, and income to uncover trends in modification requests, approvals, and post-decision delinquency behavior.
 
-Classify transactions as float vs. no-float under each strategy.
+Exploratory analysis revealed that Gen X borrowers (46%) had the highest request volume but low approval rates (2%), and 43% of requests came from Credit Tier F (<636), indicating elevated risk. Additionally, 38% of approved accounts still turned delinquent post-modification, showing limited repayment improvement. These insights highlighted that the dataset lacked consistent predictive signals, and the small sample size (only 9 approvals) made predictive modeling infeasible.
 
-Score each strategy on its ability to flag potential reversals and to catch reversals that progress to 60+ DPD delinquency and charge-off.
-
-Run a tree-based parameter search across eight controllable thresholds to identify optimal operating ranges by segment (risk tier and transaction volume).
-
-Analyze the relationship between float flags and member complaints to quantify downstream experience impact.
+Despite this, the descriptive analytics provided actionable insights into member affordability issues, credit risk distribution, and denial reasons, helping stakeholders prioritize future data enrichment before predictive modeling.
 
 Impact:
 
-Produced a clear policy recommendation: keep the existing strategy for high-risk scenarios where maximum reversal detection (higher recall) is critical; use the new strategy for high-volume, low-risk transactions to reduce false alarms and improve member experience.
+Delivered descriptive insights that improved understanding of mortgage holders’ modification behavior, credit-risk concentration, and approval likelihood by demographic segment.
 
-Established guardrails and segment-level thresholds that product and operations can implement without architecture changes.
+Identified key data gaps and recommendations for feature enrichment, laying the groundwork for a future predictive pipeline.
 
-Created a repeatable evaluation framework in Dataiku/Snowflake for future strategy A/B tests and quarterly reviews.
+Supported Mortgage Operations leadership in refining member outreach and policy alignment for high-risk segments.
 
 Key Metrics Tracked:
 
-False-flag rate (FPR) on legitimate payments
+Approval rate by generation, SEG, and credit tier
 
-Recall of payment reversals, specifically those that progress to 60+ DPD and charge-off
+Post-decision delinquency (approved vs. denied)
 
-Precision of reversal detection (quality of alerts)
+Income distribution and DTI ratio patterns
 
-Alert volume per 1,000 transactions and associated investigation workload
+Volume trends by year and request count per member
 
-Member complaint correlation with float flags
+Observed Results:
 
-Time-to-funds-availability impact (member experience)
+No consistent predictive pattern across demographic or financial features.
 
-Observed Results (Directionally):
+Financial impact could not be quantified since no modified accounts transitioned to charge-off.
 
-Existing strategy: higher recall for reversals but more false positives.
-
-New strategy: fewer false flags and better member experience, with some loss in reversal detection coverage.
+Provided clear data-driven recommendations to pause predictive modeling until data maturity improves.
 
 Collaboration:
-
-Partnered with Senior Analyst, Consumer Lending to acquire and validate the credit-card payments and reversals dataset.
-
-Worked with Jenica H., Director of Card Services, to align on definitions of fraud, float, and reversal and to confirm risk priorities by segment.
-
-Incorporated rule documentation from Velera to faithfully implement the “new strategy” logic.
+Collaborated with Brent Hauser and Anna Fowler from the Assets Management team to obtain and validate historical mortgage data for members seeking modifications.
+Worked with Srinivas Rachakonda, Assistant Manager – Data Science, to understand the Enterprise Data Warehouse (EDW) structure and data lineage, as this was my first project at First Tech Federal Credit Union.
+Partnered with Mortgage Operations leadership to review findings and define next steps for data collection improvements.
 
 Tools and Methods:
 
-Snowflake (data storage, SQL back-tests), Dataiku (pipelines, parameter search), Tree-based search for threshold tuning, confusion-matrix-based evaluation with segment cuts.
+Snowflake (data extraction and cleaning)
+
+Dataiku (data exploration, visualization, and segmentation analysis)
+
+Statistical profiling and cohort-level descriptive analysis
