@@ -37,6 +37,9 @@ Collaborated with Srinivas Rachakonda to access email campaign dashboards and Sn
 
 Coordinated with Marketing Analytics and Mortgage Operations teams to validate results and ensure alignment with business goals.
 
+All findings and deliverables were reviewed and validated with Manager Zack and Assistant Manager Srini before stakeholder presentation.
+
 Tools and Methods:
 
 Snowflake Cortex, Streamlit, Confluence API, Dataiku, SQL, Cortex Analyst, AI Observability Framework
+
