@@ -1,21 +1,490 @@
-query = """
-WITH summary_embedding AS (
-    SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
-        'snowflake-arctic-embed-l-v2.0',
-        ?
-    ) AS summary_vec
-)
-SELECT 
-    c.chunk_id,
-    c.chunk_text,
-    c.filename,
-    c.page_number,
-    VECTOR_COSINE_SIMILARITY(c.chunk_embedding, s.summary_vec) AS similarity_score
-FROM your_chunks_table c
-CROSS JOIN summary_embedding s
-ORDER BY similarity_score DESC
-LIMIT 1
-"""
+import streamlit as st # Import python packages
+from snowflake.snowpark.context import get_active_session
+import logging
+from snowflake.cortex import Complete
+from snowflake.core import Root
 
-# Execute query with response as parameter
-result_df = session.sql(query, params=[response]).to_pandas()
+import pandas as pd
+import json
+import time
+pd.set_option("max_colwidth",None)
+
+### Default Values
+NUM_CHUNKS = 3 # Num-chunks provided as context. Play with this to check how it affects your accuracy
+slide_window = 7 # how many last conversations to remember. This is the slide window.
+
+# service parameters
+CORTEX_SEARCH_DATABASE = "INNOVATION_DB"
+CORTEX_SEARCH_SCHEMA = "GENAI_POC"
+CORTEX_SEARCH_SERVICE = "MTG_SEARCH_1"
+######
+######
+
+# columns to query in the service
+COLUMNS = [
+    "chunk",
+    "relative_path",
+    "category"
+]
+
+session = get_active_session()
+root = Root(session)                         
+
+svc = root.databases[CORTEX_SEARCH_DATABASE].schemas[CORTEX_SEARCH_SCHEMA].cortex_search_services[CORTEX_SEARCH_SERVICE]
+   
+### Functions
+     
+# def config_options():
+
+#     st.sidebar.selectbox('Select your model:',('mistral-large2', 'claude-3-5-sonnet',
+#                                     'llama3.1-8b', 'snowflake-arctic','gemma-7b','llama3.2-3b'), key="model_name")
+
+#     categories = session.table('docs_chunks_table').select('category').distinct().collect()
+
+#     cat_list = ['ALL']
+#     for cat in categories:
+#         cat_list.append(cat.CATEGORY)
+            
+#     st.sidebar.selectbox('Select what products you are looking for', cat_list, key = "category_value")
+
+#     st.sidebar.checkbox('Do you want that I remember the chat history?', key="use_chat_history", value = True)
+
+#     st.sidebar.checkbox('Debug: Click to see summary generated of previous conversation', key="debug", value = True)
+#     st.sidebar.button("Start Over", key="clear_conversation", on_click=init_messages)
+#     st.sidebar.expander("Session State").write(st.session_state)
+
+def config_options():
+    # Set the keys directly
+    st.session_state["model_name"] = 'claude-sonnet-4-5'#'mistral-large2'
+    
+    categories = session.table('MTG_8k').select('category').distinct().collect()
+    cat_list = ['ALL']
+    for cat in categories:
+        cat_list.append(cat.CATEGORY)
+    
+    st.session_state["category_value"] = cat_list[0]  # Default to 'ALL'
+    st.session_state["use_chat_history"] = True
+    st.session_state["debug"] = False
+    
+    # Add the button to the sidebar
+    columns = st.columns((2,2,1))
+    
+    with columns[0]:
+        st.write('')
+    with columns[1]:
+        st.write('')
+    
+    with columns[2]:
+        st.button("New Chat", icon='💬', key="clear_conversation", on_click=init_messages, type="primary")
+
+    
+    # st.expander("Session State").write(st.session_state)
+
+
+def init_messages():
+
+    # Initialize chat history
+    if st.session_state.clear_conversation or "messages" not in st.session_state:
+        st.session_state.messages = [{"role":'assistant',"content":"Hi there! I'm the First Tech assistant, ready to help with your questions"}]
+
+def set_chat_input(p_text):
+    st.session_state['chat_input_1'] = p_text
+
+def get_similar_chunks_search_service(query,find_file=False):
+    if find_file==False:
+        chunk=NUM_CHUNKS
+    else:
+        chunk=1
+
+    if st.session_state.category_value == "ALL":
+        response = svc.search(query, COLUMNS, limit=chunk)
+    else: 
+        filter_obj = {"@eq": {"category": st.session_state.category_value} }
+        response = svc.search(query, COLUMNS, filter=filter_obj, limit=chunk)
+
+    # st.sidebar.json(response.json())
+    
+    return response.json()  
+
+# Assuming you have a Snowflake connection established
+def get_presigned_url(doc_file_name):
+    query = """
+    SELECT GET_PRESIGNED_URL('@INNOVATION_DB.GENAI_POC.MORTGAGE_CHATBOT', '{doc_file_name}' , 3600) AS URL_LINK;
+    """
+    df_url_link = session.sql(query).to_pandas()
+    return df_url_link['URL_LINK'][0]
+
+
+def get_chat_history():
+#Get the history from the st.session_stage.messages according to the slide window parameter
+    
+    chat_history = []
+    
+    start_index = max(0, len(st.session_state.messages) - slide_window)
+    for i in range (start_index , len(st.session_state.messages) -1):
+         chat_history.append(st.session_state.messages[i])
+
+    return chat_history[1:]
+
+def summarize_question_with_history(chat_history, question):
+# To get the right context, use the LLM to first summarize the previous conversation
+# This will be used to get embeddings and find similar chunks in the docs for context
+
+    prompt = f"""
+        Based on the chat history below and the question, generate a query that extend the question
+        with the chat history provided. The query should be in natural language. 
+        Answer with only the query. Do not add any explanation.
+        
+        <chat_history>
+        {chat_history}
+        </chat_history>
+        <question>
+        {question}
+        </question>
+        """
+    
+    sumary = Complete(st.session_state.model_name, prompt)   
+
+    if st.session_state.debug:
+        st.sidebar.text("Summary to be used to find similar chunks in the docs:")
+        st.sidebar.caption(sumary)
+
+    sumary = sumary.replace("'", "")
+
+    return sumary
+
+def create_prompt (myquestion):
+
+    if st.session_state.use_chat_history:
+        chat_history = get_chat_history()
+
+        if chat_history != []: #There is chat_history, so not first question
+            question_summary = summarize_question_with_history(chat_history, myquestion)
+            prompt_context =  get_similar_chunks_search_service(question_summary)
+        else:
+            prompt_context = get_similar_chunks_search_service(myquestion) #First question when using history
+    else:
+        prompt_context = get_similar_chunks_search_service(myquestion)
+        chat_history = ""
+  
+    prompt = f"""
+            As the dedicated Q&A assistant for Mortgage team associates at First Tech Federal Credit Union, I'm tasked with providing employees with informed responses. I will utilize context documents for guidance. Should I not know an answer, I'll clearly state that. I will use correct grammar, punctuation and language in my response and keep the formatting clean. CONTEXT is provided between <context> and </context> tags. When ansering the question contained between <question> and </question> tags, I'll be concise but complete and will not hallucinate, and also understand the question in detail, reason and provide the answer. If i don´t have the information i will just say so. I will only anwer the question if I can extract it from the CONTEXT provided. I will not mention the CONTEXT used in my answer. I will provide a summarized answer ask if they need more detail. And then if its necessary to show more detail based on my judgement or if they ask say show more detail, then I'll do so. 
+           <chat_history>
+           {chat_history}
+           </chat_history>
+           <context>          
+           {prompt_context}
+           </context>
+           <question>  
+           {myquestion}
+           </question>
+           Answer: 
+           """
+    
+    json_data = json.loads(prompt_context)
+
+    relative_paths = set(item['relative_path'] for item in json_data['results'])
+    # relative_paths = [''.join(list(relative_paths)[0])]
+
+    return prompt, relative_paths
+def provide_more_detail():
+    question = st.session_state['chat_input_1']
+    prompt, relative_paths = create_prompt(question)
+    detailed_response = Complete(st.session_state.model_name, prompt)
+    st.markdown(detailed_response)
+    st.session_state.messages.append({"role": "assistant", "content": detailed_response})
+
+def answer_question(myquestion):
+
+    prompt, relative_paths =create_prompt (myquestion)
+
+    response = Complete(st.session_state.model_name, prompt)   
+
+    return response, relative_paths
+
+# def answer_question(question):
+#     # Create the prompt similar to what you have now
+#     prompt, relative_paths = create_prompt(question)
+    
+#     # Initialize an empty response
+#     full_response = ""
+    
+#     # Get placeholder where we'll stream the response
+#     message_placeholder = st.empty()
+    
+#     # Set up the streaming call
+#     for response_chunk in Complete.create(
+#         model=st.session_state.model_name,
+#         prompt=prompt,
+#         stream=True # Enable streaming
+#     ):
+#         # Extract the new content from the chunk
+#         if hasattr(response_chunk, 'completion'):
+#             chunk_content = response_chunk.completion
+#         elif hasattr(response_chunk, 'delta') and hasattr(response_chunk.delta, 'text'):
+#             chunk_content = response_chunk.delta.text
+#         else:
+#             # Adapt this based on the actual structure of your API response
+#             chunk_content = response_chunk.get('choices', [{}])[0].get('text', '')
+        
+#         # Append the new content to our full response
+#         full_response += chunk_content
+        
+#         # Update the UI with the latest response
+#         message_placeholder.markdown(full_response, unsafe_allow_html=True)
+    
+#     # Process the response to extract any document paths
+#     # (This would depend on your existing logic)
+    
+    
+#     return full_response, relative_paths
+
+
+def click_detail():
+    st.session_state.show_detail=True
+    return
+
+def main():
+    # Add custom CSS for Calibri font and centering elements
+    st.set_page_config(page_title="First Tech AI Assistant", layout="centered")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.write('')
+    
+    with col2:
+        if st.session_state.get('theme', {}).get('base') == 'dark':
+            st.image('ft_white.png',width=300)
+        else:
+            st.image('dark_logo.png',width=300)
+    with col3:
+        st.markdown(' ')
+        
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            max-width:3000px;
+            margin: 0 auto;
+        
+        }
+        .chat_header{
+        text-align:center;
+        padding: 1.5rem 0;
+        border-bottom:  1px solid #f0f0f0;
+        margin-bottom: 1.5rem;
+        
+        }
+        .title-font {
+            font-family: 'Calibri', sans-serif;
+            font-size: 1.3em;
+            text-align: center;
+            white-space: nowrap;
+        }
+        .center {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+       
+        .element-container:has(#button-after) + div button  {
+            height: 100px;
+            width: 210px;
+            
+            
+            font-size: 13px; /* Increase font size */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    config_options()
+    init_messages()
+
+
+    # Example prompts
+    prompts = ["What is Fannie Mae's requirement for title impediments?",
+               "Are CCRs required for California to verify HOA lien priority?",
+               "What is needed for a trust in Colorado?",
+               "Can member documents be copied to a new application?",
+               "What conversation log template should I use for an equity file?",
+               "what are some steps I can take to avoid a return to sales?"
+               ]
+
+    
+    question1=0
+    # Create a 2x3 grid of buttons
+    cols = st.columns(3)
+    ctr=0
+    for i in range(2):
+        for j in range(3):
+            with cols[j]:
+                ctr+=1
+                st.markdown('<span id="button-after"></span>', unsafe_allow_html=True)
+                if st.button(prompts[i * 3 + j]):
+                    question1 = prompts[i * 3 + j]
+        
+    show_detailed_response = 0
+    
+     
+    # Display chat messages from history on app rerun
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"].replace("$","\$"), unsafe_allow_html=True)
+    # Accept user input
+    if question := st.chat_input("What do you want to know about First Tech?",key='chat_input_1') or question1:
+        # Add user message to chat history
+        st.session_state.messages.append({"role": "user", "content": question})
+        # Display user message in chat message container
+        with st.chat_message("user"):
+            st.markdown(question, unsafe_allow_html=True)
+        # Display assistant response in chat message container
+        with st.chat_message("assistant"):
+            message_placeholder = st.empty()
+    
+            question = question.replace("'", "")
+            response = ""
+            with st.spinner(f"🤔 Thinking..."):
+                prompt_1, relative_paths = create_prompt(question)            
+                for response_chunk in Complete(
+                    model=st.session_state.model_name,
+                    prompt= prompt_1,
+                    stream=True
+                ):
+                    # Extract chunk content as above
+                    chunk_content = (response_chunk)
+                    response += chunk_content
+                    message_placeholder.markdown(response.replace("$","\$"), unsafe_allow_html=True)
+                    time.sleep(0.1)
+                
+                response = response.replace("'", "")
+                chunk_2=get_similar_chunks_search_service(response,find_file=True)
+                json_data = json.loads(chunk_2)
+
+                relative_paths_single = set(item['relative_path'] for item in json_data['results'])
+                # relative_paths = [''.join(list(relative_paths)[0])]
+                
+                if relative_paths_single != "None":
+                    # Start HTML for a styled document section
+                    doc_section = """
+                    <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db;">
+                        <h4 style="margin-top: 0; color: #2c3e50; font-size: 16px;">Related Documents</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">"""
+                    
+                    for path in relative_paths_single:
+                        safe_path = path.replace("'", "''")
+                        # SQL command to get presigned URL
+                        cmd2 = f"select GET_PRESIGNED_URL(@INNOVATION_DB.GENAI_POC.MORTGAGE_CHATBOT, '{safe_path}', 600) as URL_LINK"
+                        df_url_link = session.sql(cmd2).to_pandas()
+                        url_link = df_url_link._get_value(0, "URL_LINK")
+                        
+                        # Extract a readable document name from the path
+                        doc_name = path.split('/')[-1].replace('_', ' ').title().replace('.pdf', '')
+                        # Truncate long document names
+                        if len(doc_name) > 30:
+                            doc_name = doc_name[:27] + "..."
+                        
+                        # Create a card-style element for each document
+                        doc_section += str(f"""<a href="{url_link}" target="_blank" style="text-decoration: none; color: inherit;">
+                            <div style="background-color: white; border-radius: 6px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 180px;">
+                                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                    <div style="background-color: #e74c3c; width: 36px; height: 36px; border-radius: 4px; display: flex; justify-content: center; align-items: center; margin-right: 10px;">
+                                        <span style="color: white; font-weight: bold; font-size: 14px;">PDF</span>
+                                    </div>
+                                    <div style="font-size: 14px; font-weight: bold; color: #34495e; overflow: hidden; text-overflow: ellipsis;">{doc_name}</div>
+                                </div>
+                                <div style="font-size: 12px; color: #7f8c8d;">Click to view</div>
+                            </div>
+                        </a>""")
+                    
+                    # Close the container divs
+                    doc_section += """</div></div>"""
+                    
+                    # Append the styled document section to the response
+                    response += doc_section
+                
+                # Display the response with HTML enabled
+                message_placeholder.markdown(response.replace("$","\$"), unsafe_allow_html=True)
+            # detailed_response = ""
+
+            st.session_state.messages.append({"role": "assistant", "content": response})
+    if len(st.session_state.messages)>=2:
+        if st.button("Show more details",help='Get a more comprehensive explanation'):
+            show_detailed_response = 1
+    
+        if show_detailed_response:
+            # provide_more_detail()
+            st.session_state.messages.append({"role": "user", "content": "Show more detail"})
+            with st.spinner("Fetching more details..."):
+                # detailed_question = question + " [PROVIDE DETAILED EXPLANATION] "
+                
+                # detailed_response, detailed_response_paths = answer_question(" Provide a more detailed answer of the previous question")
+                # detailed_response = detailed_response.replace("'", "")
+    
+                
+                    
+          
+                # with st.chat_message("assistant"):
+                #     st.empty().markdown(detailed_response, unsafe_allow_html=True)
+                detailed_placeholder = st.empty()
+                detailed_response = ""
+                prmpt,detailed_response_paths = create_prompt("Provide a more detailed answer of the previous question")
+                for response_chunk in Complete(
+                    model=st.session_state.model_name,
+                    prompt= prmpt,
+                    stream=True
+                ):
+                    # Extract chunk content as above
+                    chunk_content = (response_chunk)
+                    detailed_response += chunk_content
+                    detailed_placeholder.markdown(detailed_response.replace("$","\$"), unsafe_allow_html=True)
+                    time.sleep(0.01)
+                # st.session_state.messages.append({"role": "assistant", "content": detailed_response})
+
+                # if detailed_response_paths != "None":
+                #     # Start HTML for a styled document section
+                #     doc_section = """
+                #     <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; border-left: 4px solid #3498db;">
+                #         <h4 style="margin-top: 0; color: #2c3e50; font-size: 16px;">Related Documents</h4>
+                #         <div style="display: flex; flex-wrap: wrap; gap: 10px;">"""
+                    
+                #     for path in detailed_response_paths:
+                #         # SQL command to get presigned URL
+                #         cmd2 = f"select GET_PRESIGNED_URL(@INNOVATION_DB.GENAI_POC.DOCS, '{path}', 360) as URL_LINK"
+                #         df_url_link = session.sql(cmd2).to_pandas()
+                #         url_link = df_url_link._get_value(0, "URL_LINK")
+                        
+                #         # Extract a readable document name from the path
+                #         doc_name = path.split('/')[-1].replace('_', ' ').title().replace('.pdf', '')
+                #         # Truncate long document names
+                #         if len(doc_name) > 30:
+                #             doc_name = doc_name[:27] + "..."
+                        
+                #         # Create a card-style element for each document
+                #         doc_section += str(f"""<a href="{url_link}" target="_blank" style="text-decoration: none; color: inherit;">
+                #             <div style="background-color: white; border-radius: 6px; padding: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 180px;">
+                #                 <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                #                     <div style="background-color: #e74c3c; width: 36px; height: 36px; border-radius: 4px; display: flex; justify-content: center; align-items: center; margin-right: 10px;">
+                #                         <span style="color: white; font-weight: bold; font-size: 14px;">PDF</span>
+                #                     </div>
+                #                     <div style="font-size: 14px; font-weight: bold; color: #34495e; overflow: hidden; text-overflow: ellipsis;">{doc_name}</div>
+                #                 </div>
+                #                 <div style="font-size: 12px; color: #7f8c8d;">Click to view</div>
+                #             </div>
+                #         </a>""")
+                    
+                #     # Close the container divs
+                #     doc_section += """</div></div>"""
+                    
+                #     # Append the styled document section to the response
+                #     detailed_response += doc_section
+                
+                st.session_state.messages.append({"role": "assistant", "content": detailed_response.replace("$","\$")})
+
+
+       
+if __name__ == "__main__":
+    main()
+
+
