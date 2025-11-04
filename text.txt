@@ -1,49 +1,42 @@
-Goal: Mortgage Operations
+Goal: Gen AI Initiatives
 
-Project: Mortgage Modification Analysis
+Projects: RAG-Based Chatbot for Mortgage Operations & Snowflake Intelligence Agent for Marketing Analytics
 
 Description:
-Conducted an in-depth analysis of mortgage modification requests to identify behavioral patterns and assess the feasibility of predictive modeling for early detection of members seeking loan modifications. Using historical mortgage data from 140 accounts (231 modification requests), the analysis segmented borrowers by generation, credit tier, SEG, and income to uncover trends in modification requests, approvals, and post-decision delinquency behavior.
+Led two key Generative AI initiatives under the enterprise innovation roadmap:
 
-Exploratory analysis revealed that Gen X borrowers (46%) had the highest request volume but low approval rates (2%), and 43% of requests came from Credit Tier F (<636), indicating elevated risk. Additionally, 38% of approved accounts still turned delinquent post-modification, showing limited repayment improvement. These insights highlighted that the dataset lacked consistent predictive signals, and the small sample size (only 9 approvals) made predictive modeling infeasible.
+Mortgage RAG Chatbot: Developed a Retrieval-Augmented Generation (RAG) chatbot using Snowflake Cortex and Streamlit to help the Mortgage Operations team instantly retrieve information from over 541 Confluence documents. The solution replaced manual document searches with an AI assistant that delivers accurate, cited answers within seconds.
 
-Despite this, the descriptive analytics provided actionable insights into member affordability issues, credit risk distribution, and denial reasons, helping stakeholders prioritize future data enrichment before predictive modeling.
+Snowflake Intelligence Agent: Built an AI Agent in Snowflake Cortex Analyst capable of interpreting natural language business questions on marketing campaign data and dynamically generating SQL queries and visualizations. The agent answered key descriptive questions such as “What are the total emails delivered for a specific campaign in Q3 2025?”
 
 Impact:
 
-Delivered descriptive insights that improved understanding of mortgage holders’ modification behavior, credit-risk concentration, and approval likelihood by demographic segment.
+Reduced information retrieval time for Mortgage Operations from minutes to under 10 seconds, improving staff productivity.
 
-Identified key data gaps and recommendations for feature enrichment, laying the groundwork for a future predictive pipeline.
+Increased answer relevance by 8% and context relevance by 12% across chatbot pilots (v1→v2).
 
-Supported Mortgage Operations leadership in refining member outreach and policy alignment for high-risk segments.
+Enabled self-service analytics for the Marketing team, cutting turnaround time for data requests and improving insight accessibility.
+
+Established Snowflake AI observability metrics and a reusable AI agent framework for future business applications.
 
 Key Metrics Tracked:
 
-Approval rate by generation, SEG, and credit tier
+AI observability (Answer Relevance, Context Relevance, Groundedness)
 
-Post-decision delinquency (approved vs. denied)
+User testing scores (Accuracy, Readability, Traceability, Latency)
 
-Income distribution and DTI ratio patterns
-
-Volume trends by year and request count per member
-
-Observed Results:
-
-No consistent predictive pattern across demographic or financial features.
-
-Financial impact could not be quantified since no modified accounts transitioned to charge-off.
-
-Provided clear data-driven recommendations to pause predictive modeling until data maturity improves.
+Agent response latency and SQL interpretation accuracy (>90%)
 
 Collaboration:
-Collaborated with Brent Hauser and Anna Fowler from the Assets Management team to obtain and validate historical mortgage data for members seeking modifications.
-Worked with Srinivas Rachakonda, Assistant Manager – Data Science, to understand the Enterprise Data Warehouse (EDW) structure and data lineage, as this was my first project at First Tech Federal Credit Union.
-Partnered with Mortgage Operations leadership to review findings and define next steps for data collection improvements.
+
+Worked with Tamera Jette for Confluence access, Shannon for documentation availability, and Ashlee & Scott from Sales and Underwriting for user testing.
+
+Partnered with Leland (Sr. Director, Data Practices) for user evaluation reports and feedback tracking.
+
+Collaborated with Srinivas Rachakonda to access email campaign dashboards and Snowflake queries for agent testing.
+
+Coordinated with Marketing Analytics and Mortgage Operations teams to validate results and ensure alignment with business goals.
 
 Tools and Methods:
 
-Snowflake (data extraction and cleaning)
-
-Dataiku (data exploration, visualization, and segmentation analysis)
-
-Statistical profiling and cohort-level descriptive analysis
+Snowflake Cortex, Streamlit, Confluence API, Dataiku, SQL, Cortex Analyst, AI Observability Framework
